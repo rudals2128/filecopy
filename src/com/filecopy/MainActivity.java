@@ -37,9 +37,9 @@ public class MainActivity extends Activity {
     ProgressBar progressbar;
     boolean isAsyncTask = false;
 
-    String TARGETFOLDER = "/storage/ext_sdcard/inavi3d";
+    String TARGETFOLDER = "/storage/ext_sdcard/inavi3d/mapdata";
     String SECONDFOLDER = "/storage/ext_sdcard/test";
-    String COPYFOLDER = "/inavi";
+    String COPYFOLDER = "/inavi/mapdata";
     String REMOVEFOLDER = "/inavi/temp";
     String SECONDREMOVEFOLDER = "/inavi/test_B";
 
@@ -59,18 +59,22 @@ public class MainActivity extends Activity {
         copyButton.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(isAsyncTask==true){                    
+                if(task.getStatus() == AsyncTask.Status.FINISHED || task.getStatus() == AsyncTask.Status.RUNNING){                                        
                     return;                
-                }else{                    
+                }else{       
+
                     task = new MyAsyncTask();
                     File targetF = new File(TARGETFOLDER);
                     File secondF = new File(SECONDFOLDER); 
-                    if(targetF.exists()||secondF.exists()){                         
+                    if(targetF.exists() && secondF.exists()){                         
                         removeFile(REMOVEFOLDER);                                                     
-                        removeFile(SECONDREMOVEFOLDER);
+                        //removeFile(SECONDREMOVEFOLDER);
                         checkSize(targetF);
-                        checkSize(secondF);           
+                        //checkSize(secondF);
+
                         task.execute(); 
+                    } else {
+                        total.setText("해당 파일/폴더가 존재하지 않습니다.");
                     }                    
                 }
             }
@@ -97,7 +101,7 @@ public class MainActivity extends Activity {
         super.onBackPressed();
     }
 
-    public static void removeFile(String targetFile) {
+    private void removeFile(String targetFile) {
         try{
             File file = new File(targetFile); 
 
@@ -115,21 +119,27 @@ public class MainActivity extends Activity {
             }
         }catch(Exception e){
             e.printStackTrace();
+            total.setText("복사 진행중 에러가 발생하였습니다.");
+            current.setText("");
+            progressbar.setProgress(0);
         }
     }
 
     private void checkSize(File targetFolder){    
         try{
             File[] listFile = targetFolder.listFiles();   
-            for(int i=0;i<listFile.length;i++){
+            for(int i=0;i<listFile.length;i++){                
                     if(listFile[i].isFile()){
                         mSize += listFile[i].length();
-                    }else{
+                    }else{                        
                         checkSize(listFile[i]);
                     }
             }
         }catch(Exception e){
             e.printStackTrace();
+            total.setText("복사 진행중 에러가 발생하였습니다.");
+            current.setText("");
+            progressbar.setProgress(0);
         }
      }
 
@@ -146,8 +156,11 @@ public class MainActivity extends Activity {
     class MyAsyncTask extends AsyncTask<Void, Integer, Boolean>
     {                
 
-        private void mapdataCopy(File targetF, File copyF){
-        
+        private void mapdataCopy(File targetF, File copyF){                                    
+            if(!copyF.exists()){
+                copyF.mkdir();            
+            }
+
             File[] ff = targetF.listFiles();
             int currentsize = 0;
             for (File file : ff) {
@@ -161,7 +174,7 @@ public class MainActivity extends Activity {
                     try {
                         fis = new FileInputStream(file);
                         fos = new FileOutputStream(temp) ;
-                        byte[] b = new byte[20480];
+                        byte[] b = new byte[20480];  //20kb
                         int cnt = 0;
                         
                         while((cnt=fis.read(b)) != -1){
@@ -171,12 +184,18 @@ public class MainActivity extends Activity {
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
+                        total.setText("복사 진행중 에러가 발생하였습니다.");
+                        current.setText("");
+                        progressbar.setProgress(0);
                     } finally {
                         try {
                             fis.close();
                             fos.close();                      
                         } catch (IOException e) {                            
                             e.printStackTrace();
+                            total.setText("복사 진행중 에러가 발생하였습니다.");
+                            current.setText("");
+                            progressbar.setProgress(0);
                         }
                     }
                 }
@@ -192,7 +211,7 @@ public class MainActivity extends Activity {
             isAsyncTask = true;
             //Log.d("@@@@@@","copy start");
             mapdataCopy(targerFolder,copyFolder);
-            mapdataCopy(secondTargerFolder,secondCopyFolder);
+            //mapdataCopy(secondTargerFolder,secondCopyFolder);
             //Log.d("@@@@@@","copy end");
             return true;
         }
@@ -207,11 +226,22 @@ public class MainActivity extends Activity {
 
         @Override
         protected void onPostExecute(Boolean result) {            
-            super.onPostExecute(result);
+            super.onPostExecute(result);            
+            progressbar.getProgressDrawable().setColorFilter(
+                    getResources().getColor(R.color.colorSucess),
+                    android.graphics.PorterDuff.Mode.SRC_IN); 
             isAsyncTask = false;
             mSize = 0;
             mCsize =0;    
             //reboot();     
+        }
+
+        @Override
+        protected void onCancelled(){     
+            super.onCancelled();            
+            total.setText("복사 진행중 에러가 발생하였습니다.");
+            current.setText("");
+            progressbar.setProgress(0);            
         }
  
  
